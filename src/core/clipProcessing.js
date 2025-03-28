@@ -1,9 +1,9 @@
-// src/core/clipProcessing.js
 import ffmpeg from 'fluent-ffmpeg';
 import path from 'path';
 import { config } from '../config/config.js';
 import { Progress } from '../utils/progressBar.js';
 import { FileUtils } from '../utils/fileUtils.js';
+import { resourceMonitor } from '../utils/resourceMonitor.js'; // Added missing import
 
 export class ClipProcessor {
   constructor() {
@@ -99,12 +99,7 @@ export class ClipProcessor {
    * Cria filtro de zoom cinematográfico
    */
   createZoomFilter() {
-    return `zoompan=
-      z='min(zoom+${config.visualEffects.zoomInSpeed},1.2)':
-      d=${config.visualEffects.zoomDuration}:
-      x='iw/2-(iw/zoom/2)':
-      y='ih/2-(ih/zoom/2)':
-      fps=${config.output.format.youtube.fps}`;
+    return `zoompan=z='min(zoom+${config.visualEffects.zoomInSpeed},1.2)':d=${config.visualEffects.zoomDuration}:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':fps=${config.output.format.youtube.fps}`;
   }
 
   /**
@@ -155,18 +150,44 @@ export class ClipProcessor {
   }
 
   /**
-   * Processamento em lote paralelo
+   * Aborta todos os processos ativos
+   */
+  abortAllProcessing() {
+    this.activeProcesses.forEach(process => {
+      process.kill('SIGTERM');
+    });
+    this.activeProcesses.clear();
+    Progress.log('Processamento abortado por sobrecarga do sistema', 'warning');
+  }
+
+  /**
+   * Processamento em lote paralelo com controle de recursos
    */
   async batchProcess(clips) {
     const pool = [];
+    let lastProgressCheck = Date.now();
     
     for (const clip of clips) {
       while (pool.length >= config.processing.concurrency.clip) {
         await Promise.race(pool);
+        
+        // Verifica progresso a cada 30 segundos
+        const now = Date.now();
+        if (now - lastProgressCheck > 30000) {
+          const systemLoad = await resourceMonitor.isSystemUnderLoad();
+          if (systemLoad.cpu || systemLoad.memory) {
+            Progress.log('Sistema sobrecarregado, pausando processamento', 'warning');
+            await new Promise(resolve => setTimeout(resolve, 5000));
+          }
+          lastProgressCheck = now;
+        }
       }
 
       const task = this.processClip(clip)
-        .finally(() => pool.splice(pool.indexOf(task), 1));
+        .finally(() => {
+          pool.splice(pool.indexOf(task), 1);
+          Progress.log(`Processamento finalizado: ${path.basename(clip)}`, 'success');
+        });
 
       pool.push(task);
       Progress.log(`Clipe adicionado ao processamento: ${path.basename(clip)}`, 'debug');

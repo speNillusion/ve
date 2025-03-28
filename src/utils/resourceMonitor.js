@@ -101,10 +101,20 @@ export class ResourceMonitor extends EventEmitter {
 
   async checkThresholds() {
     const thresholds = {
-      cpu: config.processing.resourceThresholds?.cpu || 85,
-      memory: config.processing.resourceThresholds?.memory || 90,
-      disk: config.processing.resourceThresholds?.disk || 90
+      cpu: config.processing.resourceThresholds?.cpu || 75,
+      memory: config.processing.resourceThresholds?.memory || 80,
+      disk: config.processing.resourceThresholds?.disk || 85
     };
+    
+    // Verifica se há processos travados
+    const now = Date.now();
+    if (this.lastCheck && (now - this.lastCheck) > 30000) {
+      this.emit('warning', {
+        type: 'stall',
+        message: 'Possível travamento detectado'
+      });
+    }
+    this.lastCheck = now;
 
     // Verifica CPU
     if (this.stats.cpu.average > thresholds.cpu) {
@@ -164,8 +174,12 @@ export class ResourceMonitor extends EventEmitter {
 }
 
 resourceMonitor.on('warning', (data) => {
-  if (data.type === 'disk' && data.value > 95) {
-    require('./platformExport.js').platformExporter.abortAllExports();
+  if ((data.type === 'disk' && data.value > 95) ||
+      (data.type === 'memory' && data.value > 90) ||
+      (data.type === 'cpu' && data.value > 85) ||
+      data.type === 'stall') {
+    require('../core/platformExport.js').platformExporter.abortAllExports();
+    require('../core/clipProcessing.js').clipProcessor.abortAllProcessing();
   }
 });
 

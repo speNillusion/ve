@@ -25,7 +25,13 @@ export class FFmpegProcessor {
       .audioChannels(2)
       .outputOptions('-hide_banner')
       .outputOptions('-max_muxing_queue_size 9999')
-      .outputOptions('-strict -2');
+      .outputOptions('-strict -2')
+      .outputOptions('-threads 4')
+      .outputOptions('-preset medium')
+      .outputOptions('-probesize 50M')
+      .outputOptions('-analyzeduration 50M')
+      .outputOptions('-max_error_rate 0.0')
+      .outputOptions('-error_detect ignore_err');
   }
 
   /**
@@ -126,7 +132,7 @@ export class FFmpegProcessor {
   /**
    * Executa comando com tratamento de erros e retry
    */
-  async executeCommand(command, platform, outputPath) { // outputPath agora é parâmetro
+  async executeCommand(command, platform, outputPath) {
     const taskId = Progress.start({
       type: 'ffmpeg',
       color: Progress.progressColors[platform],
@@ -139,9 +145,13 @@ export class FFmpegProcessor {
           .on('progress', Progress.ffmpegHandler(taskId))
           .on('end', () => {
             Progress.complete(taskId);
-            resolve(outputPath); // Usa o outputPath recebido
+            resolve(outputPath);
           })
-          // ... (restante do código)
+          .on('error', (err) => {
+            Progress.log(`Erro no processamento: ${err.message}`, 'error');
+            reject(err);
+          })
+          .run();
       });
     } catch (error) {
       if (config.processing.retry.attempts > 0) {
@@ -151,13 +161,17 @@ export class FFmpegProcessor {
     }
   }
 
-  async retryProcessing(command, platform, taskId) {
+  async retryProcessing(inputPaths, platform, outputPath) {
     for (let i = 0; i < config.processing.retry.attempts; i++) {
       try {
+        Progress.log(`Tentativa ${i + 1} de ${config.processing.retry.attempts}`, 'info');
+        await checkSystemResources();
         const command = this.createBaseCommand(inputPaths)
-          .output(outputPath)
+          .output(outputPath);
+        this.applyProResSettings(command, platform);
         return await this.executeCommand(command, platform, outputPath);
       } catch (error) {
+        Progress.log(`Falha na tentativa ${i + 1}: ${error.message}`, 'warning');
         if (i === config.processing.retry.attempts - 1) throw error;
         await new Promise(resolve => setTimeout(resolve, config.processing.retry.delay));
       }

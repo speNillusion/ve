@@ -58,12 +58,12 @@ export const config = {
 
   processing: {
     concurrency: {
-      clipProcessing: parseEnvNumber('CONCURRENCY_CLIP', 4),
-      platformExport: parseEnvNumber('CONCURRENCY_PLATFORM', 2)
+      clipProcessing: parseEnvNumber('CONCURRENCY_CLIP', 2),
+      platformExport: parseEnvNumber('CONCURRENCY_PLATFORM', 1)
     },
     retry: {
-      attempts: parseEnvNumber('RETRY_ATTEMPTS', 3),
-      delay: parseEnvNumber('RETRY_DELAY', 1000)
+      attempts: parseEnvNumber('RETRY_ATTEMPTS', 5),
+      delay: parseEnvNumber('RETRY_DELAY', 3000)
     },
     tempDirPrefix: process.env.TEMP_DIR_PREFIX || 'video-edit-',
     cleanup: {
@@ -93,9 +93,9 @@ export const config = {
 
   advanced: {
     ffmpegPath: process.env.FFMPEG_PATH || 'ffmpeg',
-    ffmpegLogLevel: process.env.FFMPEG_LOG_LEVEL || 'warning',
+    ffmpegLogLevel: process.env.FFMPEG_LOG_LEVEL || 'info',
     ffprobePath: process.env.FFPROBE_PATH || 'ffprobe',
-    ffprobeTimeout: parseEnvNumber('FFPROBE_TIMEOUT', 10000)
+    ffprobeTimeout: parseEnvNumber('FFPROBE_TIMEOUT', 30000)
   },
 
   logging: {
