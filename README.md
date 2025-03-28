@@ -89,3 +89,12 @@ As configurações do sistema podem ser ajustadas através do arquivo `config.js
 - Parâmetros de efeitos visuais
 - Configurações de áudio
 - Diretórios de trabalho
+
+## Mudanças feitas
+
+Analisando o código, o erro de congelamento estava ocorrendo devido a alguns fatores: 
+1. O sistema estava sobrecarregado durante o processamento dos vídeos, sem um controle adequado de recursos 
+2. O processamento paralelo estava consumindo muita memória e CPU sem limites apropriados 
+3. Não havia um mecanismo eficiente de timeout para detectar e interromper processos travados 
+4. O sistema de retry não estava verificando adequadamente os recursos disponíveis antes de tentar novamente 
+5. O gerenciamento de processos ativos não estava sendo feito de forma eficiente.
