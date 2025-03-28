@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "main": "src/main.js",
   "scripts": {
-    "start": "NODE_OPTIONS='--max-old-space-size=8192 --experimental-vm-modules' node src/main.js",
+    "start": "set NODE_OPTIONS=--max-old-space-size=8192 --experimental-vm-modules && node src/main.js",
     "validate": "node --experimental-vm-modules -e \"import('./src/config/config.js').then(m => m.validateProRes())\"",
     "process": "npm run validate && npm run start --",
     "clean": "node --experimental-vm-modules -e \"import('./src/utils/fileUtils.js').then(m => m.cleanupTempFiles())\"",
